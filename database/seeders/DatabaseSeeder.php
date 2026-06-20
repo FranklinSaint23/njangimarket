@@ -13,15 +13,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Comptes de test
-        User::create([
-            'name'     => 'Admin NjangiMarket',
-            'email'    => 'admin@njangimarket.cm',
-            'phone'    => '+237 699 000 001',
-            'role'     => 'admin',
-            'password' => Hash::make('password'),
-        ]);
+        // Admin + catégories (commun dev & prod)
+        $this->call(AdminSeeder::class);
 
+        // ── Données de test uniquement (dev local) ──────────────
         $vendeur = User::create([
             'name'     => 'Marie Vendeur',
             'email'    => 'vendeur@njangimarket.cm',
@@ -47,20 +42,6 @@ class DatabaseSeeder extends Seeder
             'role'     => 'livreur',
             'password' => Hash::make('password'),
         ]);
-
-        // Catégories
-        $categories = [
-            ['nom' => 'Alimentation', 'slug' => 'alimentation', 'description' => 'Produits alimentaires locaux'],
-            ['nom' => 'Légumes & Fruits', 'slug' => 'legumes-fruits', 'description' => 'Produits frais du marché'],
-            ['nom' => 'Viandes & Poissons', 'slug' => 'viandes-poissons', 'description' => 'Protéines fraîches'],
-            ['nom' => 'Épices & Condiments', 'slug' => 'epices-condiments', 'description' => 'Épices camerounaises'],
-            ['nom' => 'Artisanat', 'slug' => 'artisanat', 'description' => 'Produits artisanaux locaux'],
-            ['nom' => 'Électronique', 'slug' => 'electronique', 'description' => 'Appareils électroniques'],
-        ];
-
-        foreach ($categories as $cat) {
-            Categorie::create(array_merge($cat, ['actif' => true]));
-        }
 
         // Produits exemples
         $cat_alim = Categorie::where('slug', 'alimentation')->first();
