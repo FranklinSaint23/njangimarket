@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Commande;
 use App\Models\CommandeItem;
 use App\Models\Produit;
+use App\Models\Tontine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +38,12 @@ class CommandeController extends Controller
             }
         }
 
-        return view('client.commandes.create', compact('items', 'total'));
+        // Tontines actives dont l'utilisateur est membre
+        $mes_tontines = Tontine::whereHas('membres', fn($q) => $q->where('user_id', auth()->id()))
+            ->whereIn('statut', ['ouvert', 'en_cours'])
+            ->get();
+
+        return view('client.commandes.create', compact('items', 'total', 'mes_tontines'));
     }
 
     public function store(Request $request)
@@ -46,11 +52,21 @@ class CommandeController extends Controller
             'adresse_livraison' => 'required|string|max:255',
             'methode_paiement'  => 'required|in:orange_money,mtn_money,tontine',
             'phone_paiement'    => 'required_unless:methode_paiement,tontine|nullable|string|max:20',
+            'tontine_id'        => 'required_if:methode_paiement,tontine|nullable|exists:tontines,id',
         ]);
 
         $panier = session('panier', []);
         if (empty($panier)) {
             return redirect()->route('client.panier.index');
+        }
+
+        // Vérification tontine avant transaction
+        $tontine = null;
+        if ($request->methode_paiement === 'tontine') {
+            $tontine = Tontine::find($request->tontine_id);
+            if (!$tontine || !$tontine->membres()->where('user_id', auth()->id())->exists()) {
+                return back()->with('error', 'Vous n\'êtes pas membre de cette tontine.');
+            }
         }
 
         DB::beginTransaction();
@@ -75,15 +91,24 @@ class CommandeController extends Controller
                 ];
             }
 
+            // Déterminer le statut selon le mode de paiement
+            $statutCommande = 'en_attente';
+            if ($tontine && $tontine->fond_total >= $total) {
+                // Fonds suffisants : paiement automatique immédiat
+                $tontine->decrement('fond_total', $total);
+                $statutCommande = 'payee';
+            }
+
             $commande = Commande::create([
-                'client_id'        => auth()->id(),
-                'sous_total'       => $total,
-                'total'            => $total,
-                'statut'           => 'en_attente',
-                'methode_paiement' => $request->methode_paiement,
+                'client_id'         => auth()->id(),
+                'tontine_id'        => $tontine?->id,
+                'sous_total'        => $total,
+                'total'             => $total,
+                'statut'            => $statutCommande,
+                'methode_paiement'  => $request->methode_paiement,
                 'adresse_livraison' => $request->adresse_livraison,
-                'note'             => $request->note,
-                'notes'            => $request->note,
+                'note'              => $request->note,
+                'notes'             => $request->note,
             ]);
 
             foreach ($itemsData as $item) {
@@ -93,17 +118,19 @@ class CommandeController extends Controller
 
             DB::commit();
 
-            // Vider le panier
             session()->forget('panier');
 
-            // Rediriger vers paiement Campay
-            if ($request->methode_paiement !== 'tontine') {
-                return redirect()->route('paiement.initier', $commande)
-                    ->with('phone_paiement', $request->phone_paiement);
+            if ($request->methode_paiement === 'tontine') {
+                if ($statutCommande === 'payee') {
+                    return redirect()->route('client.commandes.show', $commande)
+                        ->with('success', "Commande {$commande->reference} payée depuis le fond tontine « {$tontine->nom} » !");
+                }
+                return redirect()->route('client.commandes.show', $commande)
+                    ->with('info', "Commande {$commande->reference} créée. Fonds tontine insuffisants ({$tontine->nom}) — en attente d'approbation du créateur.");
             }
 
-            return redirect()->route('client.commandes.show', $commande)
-                ->with('success', "Commande {$commande->reference} créée. Paiement via tontine en attente.");
+            return redirect()->route('paiement.initier', $commande)
+                ->with('phone_paiement', $request->phone_paiement);
 
         } catch (\Exception $e) {
             DB::rollBack();

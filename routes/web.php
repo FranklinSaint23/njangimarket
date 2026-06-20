@@ -57,7 +57,7 @@ Route::middleware(['auth', 'role:vendeur'])->prefix('vendeur')->name('vendeur.')
 // === CLIENT ===
 Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->group(function () {
     Route::get('/dashboard', [ClientDashboard::class, 'index'])->name('dashboard');
-    Route::resource('commandes', CommandeController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('commandes', CommandeController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
 
     // Panier
     Route::get('/panier', [PanierController::class, 'index'])->name('panier.index');
@@ -91,6 +91,7 @@ Route::middleware(['auth', 'role:client,vendeur'])->group(function () {
     Route::resource('tontines', TontineController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::post('/tontines/{tontine}/rejoindre', [TontineController::class, 'rejoindre'])->name('tontines.rejoindre');
     Route::post('/tontines/{tontine}/cotiser', [TontineController::class, 'cotiser'])->name('tontines.cotiser');
+    Route::post('/tontines/{tontine}/payer-commande/{commande}', [TontineController::class, 'payerCommande'])->name('tontines.payer_commande');
 });
 
 require __DIR__.'/auth.php';

@@ -43,8 +43,8 @@
 
     {{-- User dropdown --}}
     <div class="dropdown">
-      <button class="btn btn-icon border-0 d-flex align-items-center gap-2 text-dark" data-bs-toggle="dropdown">
-        <div class="avatar">{{ substr(auth()->user()->name,0,1) }}</div>
+      <button class="btn border-0 p-0 d-flex align-items-center gap-2 text-dark" style="height:auto;" data-bs-toggle="dropdown">
+        <div class="avatar">{{ strtoupper(substr(auth()->user()->name,0,1)) }}</div>
         <span class="d-none d-md-inline fw-600 fs-sm">{{ auth()->user()->name }}</span>
         <i class="bi bi-chevron-down fs-xs text-secondary d-none d-md-inline"></i>
       </button>
@@ -92,6 +92,13 @@
     <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center gap-2" role="alert">
       <i class="bi bi-exclamation-circle-fill"></i>
       <span>{{ session('error') }}</span>
+      <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('info'))
+    <div class="alert alert-info alert-dismissible fade show mb-4 d-flex align-items-center gap-2" role="alert">
+      <i class="bi bi-info-circle-fill"></i>
+      <span>{{ session('info') }}</span>
       <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
     </div>
     @endif

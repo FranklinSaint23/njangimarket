@@ -45,10 +45,10 @@
 {{-- Catégories rapides --}}
 @if($categories->count())
 <div class="mb-4">
-  <div class="d-flex gap-2 flex-wrap">
-    <button class="btn btn-primary btn-sm rounded-pill">Tout</button>
+  <div class="d-flex gap-2 flex-wrap" id="catFilters">
+    <button class="btn btn-primary btn-sm rounded-pill cat-btn active" data-cat="all">Tout</button>
     @foreach($categories as $cat)
-    <button class="btn btn-outline-secondary btn-sm rounded-pill">{{ $cat->nom }}</button>
+    <button class="btn btn-outline-secondary btn-sm rounded-pill cat-btn" data-cat="{{ $cat->id }}">{{ $cat->nom }}</button>
     @endforeach
   </div>
 </div>
@@ -66,7 +66,7 @@
 @if($produits_recents->count())
 <div class="row g-3 mb-4" id="productsGrid">
   @foreach($produits_recents as $produit)
-  <div class="col-6 col-md-4 col-xl-3 product-item">
+  <div class="col-6 col-md-4 col-xl-3 product-item" data-cat-id="{{ $produit->categorie_id }}">
     <div class="product-card h-100">
       @if($produit->image_principale)
         <img src="{{ Storage::url($produit->image_principale) }}" class="product-card-img" alt="{{ $produit->nom }}">
@@ -164,10 +164,29 @@
 
 @push('scripts')
 <script>
-document.getElementById('searchInput')?.addEventListener('input', function() {
-  const q = this.value.toLowerCase();
+let activeCat = 'all';
+
+function filterProducts() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
   document.querySelectorAll('.product-item').forEach(el => {
-    el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+    const matchSearch = el.textContent.toLowerCase().includes(q);
+    const matchCat = activeCat === 'all' || el.dataset.catId === activeCat;
+    el.style.display = (matchSearch && matchCat) ? '' : 'none';
+  });
+}
+
+document.getElementById('searchInput')?.addEventListener('input', filterProducts);
+
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    activeCat = this.dataset.cat;
+    document.querySelectorAll('.cat-btn').forEach(b => {
+      b.classList.remove('btn-primary', 'active');
+      b.classList.add('btn-outline-secondary');
+    });
+    this.classList.remove('btn-outline-secondary');
+    this.classList.add('btn-primary', 'active');
+    filterProducts();
   });
 });
 </script>

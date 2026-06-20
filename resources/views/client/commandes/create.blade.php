@@ -118,12 +118,35 @@
           </p>
         </div>
 
-        <div id="tontineInfo" class="mt-2 p-3 rounded-xl" style="background:#f5f3ff;border:1px solid #ddd6fe;display:none;">
-          <div class="fw-600 fs-sm" style="color:#5b21b6;"><i class="bi bi-people-fill me-1"></i>Paiement via tontine</div>
-          <p class="fs-xs text-secondary mt-1 mb-2">Votre commande sera groupée avec votre tontine active. Vous bénéficiez de 15% de réduction.</p>
-          <a href="{{ route('tontines.index') }}" class="fs-xs fw-600 text-decoration-none" style="color:#7c3aed;">
-            Voir mes tontines <i class="bi bi-arrow-right"></i>
-          </a>
+        <div id="tontineInfo" class="mt-3" style="display:none;">
+          @if($mes_tontines->count())
+            <label class="form-label fw-600">Choisir la tontine</label>
+            <select name="tontine_id" id="tontineSelect" class="form-select mb-2">
+              <option value="">— Sélectionner une tontine —</option>
+              @foreach($mes_tontines as $t)
+              <option value="{{ $t->id }}"
+                      data-fond="{{ $t->fond_total }}"
+                      data-nom="{{ $t->nom }}">
+                {{ $t->nom }} · Fond : {{ number_format($t->fond_total) }} FCFA
+              </option>
+              @endforeach
+            </select>
+
+            {{-- Indicateur dynamique --}}
+            <div id="tontineFondInfo" class="p-3 rounded-xl fs-xs" style="display:none;"></div>
+
+            <p class="fs-xs text-secondary mt-2">
+              <i class="bi bi-info-circle me-1"></i>
+              Si le fond est suffisant, la commande est payée immédiatement. Sinon elle attend l'approbation du créateur.
+            </p>
+          @else
+            <div class="alert alert-warning mb-0 fs-sm d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              <div>Vous n'êtes membre d'aucune tontine active.
+                <a href="{{ route('tontines.index') }}" class="fw-600 ms-1">Rejoindre une tontine</a>
+              </div>
+            </div>
+          @endif
         </div>
       </div>
     </div>
@@ -173,15 +196,48 @@
 
 @push('scripts')
 <script>
-// Afficher/cacher champ téléphone selon mode
+const total = {{ $total }};
+
+// Afficher/cacher champ téléphone vs tontine selon mode
 document.querySelectorAll('input[name=methode_paiement]').forEach(radio => {
   radio.addEventListener('change', function() {
     const isTontine = this.value === 'tontine';
-    document.getElementById('phoneField').style.display  = isTontine ? 'none' : '';
-    document.getElementById('tontineInfo').style.display = isTontine ? '' : 'none';
-    document.getElementById('phone_paiement').required   = !isTontine;
+    document.getElementById('phoneField').style.display   = isTontine ? 'none' : '';
+    document.getElementById('tontineInfo').style.display  = isTontine ? '' : 'none';
+    document.getElementById('phone_paiement').required    = !isTontine;
+    const sel = document.getElementById('tontineSelect');
+    if (sel) sel.required = isTontine;
   });
 });
+
+// Indicateur fond tontine
+const tontineSelect = document.getElementById('tontineSelect');
+if (tontineSelect) {
+  tontineSelect.addEventListener('change', function() {
+    const opt  = this.options[this.selectedIndex];
+    const fond = parseFloat(opt.dataset.fond || 0);
+    const nom  = opt.dataset.nom || '';
+    const box  = document.getElementById('tontineFondInfo');
+
+    if (!this.value) { box.style.display = 'none'; return; }
+
+    box.style.display = '';
+    if (fond >= total) {
+      box.style.background = '#f0fdf4';
+      box.style.border     = '1px solid #bbf7d0';
+      box.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i>
+        <strong>Paiement automatique</strong> — Fond disponible : <strong>${fond.toLocaleString('fr')} FCFA</strong>.
+        La commande sera payée immédiatement.`;
+    } else {
+      box.style.background = '#fffbeb';
+      box.style.border     = '1px solid #fde68a';
+      box.innerHTML = `<i class="bi bi-clock-fill text-warning me-1"></i>
+        <strong>Fonds insuffisants</strong> — Disponible : <strong>${fond.toLocaleString('fr')} FCFA</strong>
+        / Besoin : <strong>${total.toLocaleString('fr')} FCFA</strong>.
+        La commande restera en attente jusqu'à approbation du créateur.`;
+    }
+  });
+}
 
 // Carte checkout - Yaoundé par défaut
 const map = L.map('checkoutMap').setView([3.848, 11.502], 12);

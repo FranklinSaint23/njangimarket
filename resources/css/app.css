@@ -310,7 +310,7 @@ body {
 /* ══════════════════════════════════════════════════════════
    BADGES
 ══════════════════════════════════════════════════════════ */
-.badge { font-weight: 600; font-size: .6875rem; letter-spacing: .02em; border-radius: 99px; padding: .3em .7em; }
+.badge { font-weight: 600; font-size: .6875rem; letter-spacing: .02em; border-radius: 99px; padding: .3em .7em; vertical-align: middle; }
 
 .badge-role-admin   { background: #fef2f2; color: #dc2626; }
 .badge-role-vendeur { background: #eff6ff; color: #2563eb; }
@@ -348,8 +348,9 @@ body {
   width: 36px; height: 36px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: .875rem; color: #fff;
+  font-weight: 700; font-size: .875rem; line-height: 1; color: #fff;
   flex-shrink: 0;
+  user-select: none;
   background: linear-gradient(135deg, var(--nj-primary), var(--nj-accent));
 }
 

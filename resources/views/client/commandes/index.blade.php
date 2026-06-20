@@ -47,10 +47,19 @@
             </td>
             <td><span class="status-badge status-{{ $cmd->statut }}">{{ str_replace('_',' ',ucfirst($cmd->statut)) }}</span></td>
             <td class="text-secondary fs-xs">{{ $cmd->created_at->format('d/m/Y') }}</td>
-            <td>
+            <td class="d-flex gap-1">
               <a href="{{ route('client.commandes.show', $cmd) }}" class="btn btn-icon btn-outline-secondary">
                 <i class="bi bi-eye fs-xs"></i>
               </a>
+              @if($cmd->statut === 'en_attente')
+              <form method="POST" action="{{ route('client.commandes.destroy', $cmd) }}"
+                    onsubmit="return confirm('Annuler la commande {{ $cmd->reference }} ?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="btn btn-icon btn-outline-danger" title="Annuler la commande">
+                  <i class="bi bi-trash fs-xs"></i>
+                </button>
+              </form>
+              @endif
             </td>
           </tr>
           @endforeach

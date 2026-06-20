@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tontine;
 use App\Models\TontineMembre;
 use App\Models\Cotisation;
+use App\Models\Commande;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -74,7 +75,7 @@ class TontineController extends Controller
 
     public function show(Tontine $tontine)
     {
-        $tontine->load(['createur', 'membres.user', 'cotisations.user', 'commandes.client']);
+        $tontine->load(['createur', 'membres.user', 'cotisations.user']);
 
         $user = auth()->user();
         $est_membre = $tontine->membres->where('user_id', $user->id)->isNotEmpty();
@@ -82,10 +83,57 @@ class TontineController extends Controller
 
         $total_cotise = $tontine->cotisations->sum('montant');
         $mes_cotisations = $tontine->cotisations->where('user_id', $user->id);
+        $mon_total_cotise = $mes_cotisations->where('statut', 'confirme')->sum('montant');
+        $restant_cotisation = max(0, $tontine->montant_cotisation - $mon_total_cotise);
+
+        // Commandes tontine en attente (visibles par le créateur pour approbation)
+        $commandes_en_attente = Commande::where('tontine_id', $tontine->id)
+            ->where('statut', 'en_attente')
+            ->with(['client', 'items'])
+            ->latest()
+            ->get();
+
+        // Commandes déjà payées via cette tontine
+        $commandes_payees = Commande::where('tontine_id', $tontine->id)
+            ->where('statut', 'payee')
+            ->with('client')
+            ->latest()
+            ->take(10)
+            ->get();
 
         return view('tontines.show', compact(
-            'tontine', 'est_membre', 'mon_membre', 'total_cotise', 'mes_cotisations'
+            'tontine', 'est_membre', 'mon_membre', 'total_cotise', 'mes_cotisations',
+            'mon_total_cotise', 'restant_cotisation',
+            'commandes_en_attente', 'commandes_payees'
         ));
+    }
+
+    public function payerCommande(Tontine $tontine, Commande $commande)
+    {
+        abort_unless($tontine->createur_id === auth()->id(), 403);
+
+        if ($commande->tontine_id !== $tontine->id) {
+            return back()->with('error', 'Cette commande n\'appartient pas à cette tontine.');
+        }
+        if ($commande->statut !== 'en_attente') {
+            return back()->with('error', 'Cette commande a déjà été traitée.');
+        }
+        if ($tontine->fond_total < $commande->total) {
+            return back()->with('error',
+                'Fonds insuffisants. Disponible : ' . number_format($tontine->fond_total) .
+                ' FCFA — Besoin : ' . number_format($commande->total) . ' FCFA.'
+            );
+        }
+
+        DB::transaction(function () use ($tontine, $commande) {
+            $tontine->decrement('fond_total', $commande->total);
+            $commande->update(['statut' => 'payee']);
+        });
+
+        return back()->with('success',
+            "Commande {$commande->reference} de {$commande->client->name} payée — " .
+            number_format($commande->total) . ' FCFA débités du fond.'
+        );
     }
 
     public function rejoindre(Request $request, Tontine $tontine)
@@ -125,18 +173,37 @@ class TontineController extends Controller
             return back()->with('error', 'Vous n\'êtes pas membre de cette tontine.');
         }
 
-        DB::transaction(function () use ($request, $tontine, $user) {
+        $deja_cotise = $tontine->cotisations()
+            ->where('user_id', $user->id)
+            ->where('statut', 'confirme')
+            ->sum('montant');
+
+        $restant = $tontine->montant_cotisation - $deja_cotise;
+
+        if ($restant <= 0) {
+            return back()->with('error', 'Vous avez déjà atteint votre quota de cotisation (' . number_format($tontine->montant_cotisation) . ' FCFA).');
+        }
+
+        // Plafonner le montant à ce qui reste
+        $montant = min((int) $request->montant, (int) $restant);
+
+        DB::transaction(function () use ($montant, $tontine, $user) {
             Cotisation::create([
                 'tontine_id' => $tontine->id,
                 'user_id'    => $user->id,
-                'montant'    => $request->montant,
+                'montant'    => $montant,
                 'statut'     => 'confirme',
             ]);
 
-            $tontine->increment('fond_total', $request->montant);
+            $tontine->increment('fond_total', $montant);
         });
 
-        return back()->with('success', number_format($request->montant) . ' FCFA cotisés avec succès !');
+        $msg = number_format($montant) . ' FCFA cotisés avec succès !';
+        if ($montant < (int) $request->montant) {
+            $msg .= ' (Montant ajusté : quota atteint.)';
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function destroy(Tontine $tontine)
