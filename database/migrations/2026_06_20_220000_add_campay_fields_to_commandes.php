@@ -14,11 +14,13 @@ return new class extends Migration
             $table->text('note')->nullable()->after('adresse_livraison');
         });
 
-        // Étendre l'enum statut pour inclure payee et paiement_en_cours
-        DB::statement("ALTER TABLE commandes MODIFY COLUMN statut ENUM(
-            'en_attente','confirmee','en_preparation','en_livraison','livree','annulee',
-            'payee','paiement_en_cours'
-        ) DEFAULT 'en_attente'");
+        // Étendre l'enum statut (MySQL uniquement — SQLite stocke les enums comme string)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE commandes MODIFY COLUMN statut ENUM(
+                'en_attente','confirmee','en_preparation','en_livraison','livree','annulee',
+                'payee','paiement_en_cours'
+            ) DEFAULT 'en_attente'");
+        }
     }
 
     public function down(): void
@@ -27,8 +29,10 @@ return new class extends Migration
             $table->dropColumn(['campay_reference', 'note']);
         });
 
-        DB::statement("ALTER TABLE commandes MODIFY COLUMN statut ENUM(
-            'en_attente','confirmee','en_preparation','en_livraison','livree','annulee'
-        ) DEFAULT 'en_attente'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE commandes MODIFY COLUMN statut ENUM(
+                'en_attente','confirmee','en_preparation','en_livraison','livree','annulee'
+            ) DEFAULT 'en_attente'");
+        }
     }
 };
