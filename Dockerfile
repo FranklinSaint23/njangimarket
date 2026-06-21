@@ -31,6 +31,13 @@ RUN npm ci && npm run build
 # Reste du projet
 COPY . .
 
+# Créer les dossiers storage nécessaires (absents du .dockerignore)
+RUN mkdir -p storage/framework/views \
+              storage/framework/cache/data \
+              storage/framework/sessions \
+              storage/logs \
+              bootstrap/cache
+
 # Permissions Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
