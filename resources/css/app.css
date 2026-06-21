@@ -82,12 +82,14 @@ body {
   font-weight: 600;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: #475569;
+  color: #64748b;
   padding: .5rem .75rem;
   margin-top: .75rem;
 }
 
-.sidebar .nav-link {
+/* Styles partagés sidebar desktop + offcanvas mobile */
+.sidebar .nav-link,
+.offcanvas-body .nav-link {
   display: flex;
   align-items: center;
   gap: .625rem;
@@ -101,25 +103,34 @@ body {
   text-decoration: none;
 }
 
-.sidebar .nav-link i {
+.sidebar .nav-link i,
+.offcanvas-body .nav-link i {
   font-size: 1rem;
   width: 18px;
   text-align: center;
   flex-shrink: 0;
 }
 
-.sidebar .nav-link:hover {
+.sidebar .nav-link:hover,
+.offcanvas-body .nav-link:hover {
   background: rgba(255,255,255,.07);
   color: #e2e8f0;
 }
 
-.sidebar .nav-link.active {
+.sidebar .nav-link.active,
+.offcanvas-body .nav-link.active {
   background: var(--nj-sidebar-active-bg);
   color: var(--nj-sidebar-active-text);
   font-weight: 600;
 }
 
-.sidebar .nav-link.active i { color: var(--nj-primary); }
+.sidebar .nav-link.active i,
+.offcanvas-body .nav-link.active i { color: var(--nj-primary); }
+
+/* Section labels dans l'offcanvas mobile */
+.offcanvas-body .sidebar-section-label {
+  color: #64748b;
+}
 
 /* ══════════════════════════════════════════════════════════
    MAIN CONTENT
