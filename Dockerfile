@@ -42,10 +42,9 @@ RUN mkdir -p storage/framework/views \
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Cache routes et vues au build (pas config — les env vars Render ne sont pas dispo au build)
-RUN php artisan route:cache && php artisan view:cache
-
 EXPOSE 80
 
-# Au démarrage : config:cache AVEC les vraies env vars Render, puis migrations, puis Apache
-CMD php artisan config:cache && php artisan migrate --force --seed --seeder=AdminSeeder && apache2-foreground
+# Au démarrage : cache AVEC les vraies env vars Render, puis migrations, puis Apache
+CMD php artisan config:cache && php artisan route:cache && php artisan view:cache \
+    && php artisan migrate --force --seed --seeder=AdminSeeder \
+    && apache2-foreground

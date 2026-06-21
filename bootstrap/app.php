@@ -12,11 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render (et tout reverse proxy) envoie X-Forwarded-Proto: https
+        // Sans ça, Laravel génère des URLs http:// et le CSS/JS est bloqué
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role'  => \App\Http\Middleware\CheckRole::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         ]);
-        // Exclude Campay webhook from CSRF (external POST)
         $middleware->validateCsrfTokens(except: ['webhook/campay']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
